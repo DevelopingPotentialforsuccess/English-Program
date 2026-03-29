@@ -1,0 +1,102 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: allowed_users
+    // Document ID: user email
+    // Fields:
+    //   - email: string (required)
+    //   - name: string (required)
+    //   - registeredAt: number (required)
+    //   - lastLogin: number (required)
+    //   - status: string (required, enum: ['active', 'inactive'])
+    //   - accessCodeUsed: string (required)
+    //
+    // Collection: user_settings
+    // Document ID: user email
+    // Fields:
+    //   - brandSettings: map (optional)
+    //
+    // Collection: generatedTests
+    // Document ID: auto-generated
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required)
+    //   - content: string (required)
+    //   - timestamp: number (required)
+    //   - authorEmail: string (required)
+    //   - authorName: string (optional)
+    //   - authorCode: string (optional)
+    //   - module: string (optional)
+    //   - level: string (optional)
+    //   - topic: string (optional)
+    //   - logicSnapshot: string (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return true; // Authentication removed as per user request
+    }
+
+    function isEmailOwner(email) {
+      return true; // Authentication removed as per user request
+    }
+
+    function isAdmin() {
+      // Keep admin check for the specific email if they happen to be signed in, 
+      // but generally we are allowing public access now.
+      return request.auth != null &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "sekchanthyoptimize@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidUser(data) {
+      return data.email is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.registeredAt is number &&
+             data.lastLogin is number &&
+             data.status in ['active', 'inactive'] &&
+             data.accessCodeUsed is string;
+    }
+
+    function isValidTest(data) {
+      return data.id is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 1000000 &&
+             data.timestamp is number &&
+             data.authorEmail is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /allowed_users/{email} {
+      allow read, write: if true;
+    }
+
+    match /user_settings/{email} {
+      allow read, write: if true;
+    }
+
+    match /generatedTests/{testId} {
+      allow read, write: if true;
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
